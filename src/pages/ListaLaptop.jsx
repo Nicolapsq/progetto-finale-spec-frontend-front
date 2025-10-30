@@ -1,7 +1,18 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useSearchParams, Link, useNavigate } from "react-router-dom";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
+
+  // debounce per ricerca
+    function debounce(callback, delay) {
+      let timeout; // variabile per memorizzare il timeout (inizialmente undefined)
+      return (value) => { // ritorna una funzione che prende un valore (closure)
+        clearTimeout(timeout); // cancella il timeout precedente
+        timeout = setTimeout(() => { // imposta un nuovo timeout
+          callback(value); // esegue la funzione dopo il delay
+        }, delay); // delay in millisecondi
+      };
+    };
 
 export default function ListaRecord() {
   const navigate = useNavigate();
@@ -25,13 +36,13 @@ export default function ListaRecord() {
     setSearchInput(search); // sincronizza se cambia searchParams da altre pagine
   }, [search]);
 
-  // debounce per ricerca
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setSearchParams({ search: searchInput, category, order });
-    }, 500); // delay 500ms
-    return () => clearTimeout(handler);
-  }, [searchInput, category, order, setSearchParams]);
+  // uso debounce per ricerca
+    const debounceSearch = useCallback( // memoizza la funzione tra i render
+      debounce((value) => { // funzione debounce che aggiorna query string
+        setSearchParams({ search: value, category, order }); // aggiorno il valore in search
+      }, 500), // 500ms di delay
+      [category, order, setSearchParams] // dipendenze della funzione
+    );
 
   useEffect(() => {
     setLoading(true); // inizio caricamento
@@ -69,9 +80,10 @@ export default function ListaRecord() {
 
   // Gestione form
 
-  // aggiorno stato ricerca al cambiamento input
+  // aggiorno stato ricerca al cambiamento input (gestione input controllato con debounce)
   function handleSearch(e) {
     setSearchInput(e.target.value);
+    debounceSearch(e.target.value);
   }
 
   // aggiorno query string
